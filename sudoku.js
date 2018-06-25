@@ -64,6 +64,31 @@ var ligneCorrecte = function(ar){
     return true;
 };
 
+/*vérifie qu'un carré 3x3 est correct*/
+var carre3x3Correct = function(gr, topLigne, leftColumn){
+    var valeurs = new Array();
+    for(var i=topLigne;i<topLigne+3;i++){
+        for(var j=leftColumn;j<leftColumn+3;j++){
+            if(valeurs.indexOf(gr[i][j]) != -1)
+                return false;
+            else
+                (gr[i][j]!=0)?valeurs.push(gr[i][j]):"";
+        }
+    }
+    return true;
+};
+/*vérifie que l'ensemble des carrés 3x3 sont corrects */
+var grille3x3Correcte = function(gr){
+    for(var topLigne=0; topLigne<9; topLigne+=3){
+        for(var leftColumn=0; leftColumn<9; leftColumn+=3){
+            if(!carre3x3Correct(gr, topLigne, leftColumn))
+                return false;
+        }
+    }
+    return true;
+};
+
+
 /*
 Vérifie qu'une grille est complétée <=> il n'y a aucune case vide
 */
@@ -86,7 +111,7 @@ var isGoodIncompleteSudoku = function(gr){
         if(!ligneCorrecte(gr[i]) || !ligneCorrecte(rev[i]))
             return false;
     }
-    return true;
+    return grille3x3Correcte(gr);
 };
 
 /*
@@ -190,6 +215,8 @@ var resoudre = function(grToWork){
             i--;//du coup on repart en arrière dans le for
             iter++;
         }
+        if(iter>5000000)
+            return [iter,false];
     }
     return [iter,grToWork];
 }
@@ -322,16 +349,23 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 case 'solve':
                                     solved = resoudre(grilleUser);
                                     iter = solved[0]
-                                    pathImg = dessinerSudokuResolu(solved[1], defineFromString(stUser));
-                                    bot.uploadFile({
-                                        to: channelID,
-                                        message: "Voilà votre grille résolue en "+iter+" itérations !",
-                                        file: pathImg,
-                                        filename: "grille.png"
-                                    });
-                                    fs.unlink(pathImg, function(err){
-                                        if(err) throw err;
-                                    });
+                                    if(!solved[1]){
+                                        bot.sendMessage({
+                                            to: channelID,
+                                            message: "Temps d'execution dépassé"
+                                        });
+                                    }else{
+                                        pathImg = dessinerSudokuResolu(solved[1], defineFromString(stUser));
+                                        bot.uploadFile({
+                                            to: channelID,
+                                            message: "Voilà votre grille résolue en "+iter+" itérations !",
+                                            file: pathImg,
+                                            filename: "grille.png"
+                                        });
+                                        fs.unlink(pathImg, function(err){
+                                            if(err) throw err;
+                                        });
+                                    }
                                     break;
                                 case 'draw':
                                     pathImg = dessinerSudokuResolu(grilleUser, grilleVide);
