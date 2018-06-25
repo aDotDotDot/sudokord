@@ -1,0 +1,13 @@
+{
+  "name": "sudokord",
+  "version": "0.0.1",
+  "description": "Sudoku Solver Discord bot",
+  "main": "sudoku.js",
+  "author": "DotDotDot",
+  "dependencies": {
+    "discord.io": "github:woor/discord.io#gateway_v6",
+    "feedparser": "^2.2.9",
+    "node-gd": "^1.5.4",
+    "winston": "^2.4.2"
+  }
+}
