@@ -425,6 +425,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     });
                                     break;
                                 case 'check':
+                                    var canSolve = resoudre(defineFromString(stUser))[1];
                                     if(isGoodSudoku(grilleUser)){
                                         pathImg = dessinerSudokuResolu(grilleUser, null);
                                         bot.uploadFile({
@@ -436,16 +437,21 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                         fs.unlink(pathImg, function(err){
                                             if(err) throw err;
                                         });
-                                    }else if(isGoodIncompleteSudoku(grilleUser)){
+                                    }else if(isGoodIncompleteSudoku(grilleUser) && canSolve){
                                         pathImg = dessinerSudokuResolu(grilleUser, null);
                                         bot.uploadFile({
                                             to: channelID,
-                                            message: "Cette grille est valide, mais incomplète !",
+                                            message: "Cette grille est valide, incomplète, mais peut-être résolue, vous êtes sur la bonne voie !",
                                             file: pathImg,
                                             filename: "grille.png"
                                         });
                                         fs.unlink(pathImg, function(err){
                                             if(err) throw err;
+                                        });
+                                    }else if(isGoodIncompleteSudoku(grilleUser) && !canSolve){
+                                        bot.sendMessage({
+                                            to: channelID,
+                                            message: "Cette grille est valide, incomplète, mais ne peut pas peut-être résolue, vous avez probablement fait une petite erreur"
                                         });
                                     }else{
                                         bot.sendMessage({
