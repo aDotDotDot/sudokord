@@ -18,7 +18,9 @@ const bot = new Discord.Client({
     token: auth.token,
     autorun: true
 });
-const grilleVide = [[0,0,0,0,0,0,0,0,0],
+var grilleVide = function(){
+    var g = new Array();
+        g = [[0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0],
@@ -27,17 +29,11 @@ const grilleVide = [[0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0],
              [0,0,0,0,0,0,0,0,0]];
+    return g;
+}
 //permet de faire la symétrie d'une grille, passant les colonnes en lignes et inversement
 var reverseGrille = function(gr){
-    rev = [[0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0],
-             [0,0,0,0,0,0,0,0,0]];
+    rev = grilleVide();
     for(var i=0; i<9; i++){
         for(var j=0; j<9; j++){
             rev[j][i] = gr[i][j];
@@ -45,6 +41,38 @@ var reverseGrille = function(gr){
     }
     return rev;
 };
+/* Liste les valeurs possible pour une case */
+var valeursPossibles = function(gr, ligne, colonne){
+    var val = new Array();
+    for(var i=1; i<=9; i++){
+        if(testNouvelleValeur(gr, ligne, colonne, i))
+            val.push(i);
+    }
+    return val;
+};
+/* Génère une grille de sudoku à résoudre */
+var genererGrille = function(difficulte){
+    var grilleG = grilleVide();
+    var difficultes = [40,34,29,21,15];
+    var nbCasesMax = difficultes[difficulte];
+    while(nbCasesMax>0){
+        for(var i=0; i<9; i++){
+            for(var j=0; j<9; j++){
+                var aRemplir = (Math.random() < 0.2) && nbCasesMax>0;//on remplit la case 1 fois sur deux, si on n'a pas atteint le maximum
+                if(aRemplir){
+                    var possible = valeursPossibles(grilleG, i, j);
+                    grilleG[i][j] = possible[Math.floor(Math.random()*possible.length)];
+                    nbCasesMax--;
+                }
+            }
+        }
+    }
+    var copy = defineFromString(stringFromSudoku(grilleG));
+    if(resoudre(copy)[1]){//on veut une grille qui peut être résolue
+        return grilleG;
+    }else
+        return genererGrille(difficulte);
+}
 
 /*
 Vérifie qu'une ligne est correcte : 
@@ -192,7 +220,8 @@ var testNouvelleValeur = function(gr, ligne, colonne, valeur){
 var resoudre = function(grToWork){
     var cv = casesVides(grToWork);//les cases à remplir
     var iter = 0;//pour garder une trace des itérations
-    for(var i=0; i < cv.length;){//on va gérer nous mêmes nos itérations, donc pas de i++ dans la définition
+    try{
+        for(var i=0; i < cv.length;){//on va gérer nous mêmes nos itérations, donc pas de i++ dans la définition
         var limit = 9;//le max des nombres
         var ligne, colonne, valeur, good;
         good = false;
@@ -216,7 +245,11 @@ var resoudre = function(grToWork){
             iter++;
         }
         if(iter>5000000)
-            return [iter,false];
+            throw "Too many iterations";
+        }
+    }catch(e){
+        logger.warn(e);
+        return [iter,false];
     }
     return [iter,grToWork];
 }
@@ -253,6 +286,15 @@ var defineFromString = function(stSudoku){
     return sudoku;
 };
 
+/* Retourne la string correspondant à la grille */
+var stringFromSudoku = function(gr){
+    var st = "";
+    for(var i =0; i<9; i++){
+        st+= gr[i].join('');
+        if(i<8) st+='|';
+    }
+    return st;
+}
 
 /*Permet de dessiner une grille, en mettant les valeurs initiales avec une couleur différente si besoin*/
 var dessinerSudokuResolu = function(gr, initGr){
@@ -268,10 +310,11 @@ var dessinerSudokuResolu = function(gr, initGr){
       var txtColor = img.colorAllocate(0, 0, 0);//du noir
       var txtColorRed = img.colorAllocate(255, 0, 0);//du rouge
       var txtColorBleu = img.colorAllocate(71, 93, 255);//du bleu pastel
+      var onlyOne = (initGr == null); //si on n'a pas d'autre grille
       for(var i = 0; i< 9; i++){
           for(var j = 0; j < 9; j++){
               if(gr[j][i] != 0){
-                  if(initGr[j][i] != 0){
+                  if(onlyOne || initGr[j][i] != 0){
                       //on a une image de 9*60 x 9*60 pixels, chaque chiffre va dans un carré de 60x60
                       //les coordonnées sont donc de j*60 i*60 pour le coin
                       // mais on veut centrer le texte, on préfère donc le bas de la case (j+1) puis remonter de quelques pixels (11 semble être correct avec la taille et la police)
@@ -322,11 +365,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         args = args.splice(1);
         switch(cmd) {
             case 'sudoku':
-                var possibleCommands = ['solve', 'draw'];
+                var possibleCommands = ['solve', 'draw', 'check', 'generate'];
                 if(args.length < 1){
                     bot.sendMessage({
                         to: channelID,
-                        message: "Demandez moi de résoudre ou de dessiner un sudoku : \`\`\`$sudoku solve <lignes sans espaces séparées par |>\n$sudoku draw <lignes sans espaces séparées par |>\`\`\`"
+                        message: "Demandez moi de résoudre ou de dessiner un sudoku : \`\`\`$sudoku solve <lignes sans espaces séparées par |>\n$sudoku draw <lignes sans espaces séparées par |>\n$sudoku check <lignes sans espaces séparées par |>\n$sudoku generate <difficulté entre 1 et 5>\`\`\`"
                     });
                 }else{
                     cmd2 = args[0];
@@ -334,12 +377,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     if(possibleCommands.indexOf(cmd2) == -1){
                         bot.sendMessage({
                             to: channelID,
-                            message: "Je ne connais pas cette commande, essayez plutôt : \`\`\`$sudoku solve <lignes sans espaces séparées par |>\n$sudoku draw <lignes sans espaces séparées par |>\`\`\`"
+                            message: "Je ne connais pas cette commande, essayez plutôt : \`\`\`$sudoku solve <lignes sans espaces séparées par |>\n$sudoku draw <lignes sans espaces séparées par |>\n$sudoku check <lignes sans espaces séparées par |>\n$sudoku generate <difficulté entre 1 et 5>\`\`\`"
                         });
                     }else{
-                        stUser = args[0];
-                        grilleUser = defineFromString(stUser)
-                        if(!grilleUser || !isGoodIncompleteSudoku(grilleUser)){
+                        if(cmd2 != "generate"){
+                            stUser = args[0];
+                            grilleUser = defineFromString(stUser)
+                        }
+                        if((cmd2 != "generate") && (!grilleUser || !isGoodIncompleteSudoku(grilleUser))){
                             bot.sendMessage({
                                 to: channelID,
                                 message: "Essayez plutôt une grille valide, par exemple : \`\`\`$sudoku solve 530070000|600195000|098000060|800060003|400803001|700020006|060000280|000419000|000080079\`\`\`"
@@ -352,7 +397,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     if(!solved[1]){
                                         bot.sendMessage({
                                             to: channelID,
-                                            message: "Temps d'execution dépassé"
+                                            message: "Une erreur s'est produite, cette grille est invalide, ou le bot n'a pas trouvé de solution dans un temps raisonnable"
                                         });
                                     }else{
                                         pathImg = dessinerSudokuResolu(solved[1], defineFromString(stUser));
@@ -368,10 +413,59 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     }
                                     break;
                                 case 'draw':
-                                    pathImg = dessinerSudokuResolu(grilleUser, grilleVide);
+                                    pathImg = dessinerSudokuResolu(grilleUser, null);
                                     bot.uploadFile({
                                         to: channelID,
                                         message: "Voilà votre grille !",
+                                        file: pathImg,
+                                        filename: "grille.png"
+                                    });
+                                    fs.unlink(pathImg, function(err){
+                                        if(err) throw err;
+                                    });
+                                    break;
+                                case 'check':
+                                    if(isGoodSudoku(grilleUser)){
+                                        pathImg = dessinerSudokuResolu(grilleUser, null);
+                                        bot.uploadFile({
+                                            to: channelID,
+                                            message: "Cette grille est valide !",
+                                            file: pathImg,
+                                            filename: "grille.png"
+                                        });
+                                        fs.unlink(pathImg, function(err){
+                                            if(err) throw err;
+                                        });
+                                    }else if(isGoodIncompleteSudoku(grilleUser)){
+                                        pathImg = dessinerSudokuResolu(grilleUser, null);
+                                        bot.uploadFile({
+                                            to: channelID,
+                                            message: "Cette grille est valide, mais incomplète !",
+                                            file: pathImg,
+                                            filename: "grille.png"
+                                        });
+                                        fs.unlink(pathImg, function(err){
+                                            if(err) throw err;
+                                        });
+                                    }else{
+                                        bot.sendMessage({
+                                            to: channelID,
+                                            message: "Cette grille est invalide"
+                                        });
+                                    }
+                                    break;
+                                case 'generate':
+                                    var diff = parseInt(args[0])-1;
+                                    var grG;
+                                    if(diff && diff > 0 && diff < 5)
+                                        grG = genererGrille(diff);
+                                    else
+                                        grG = genererGrille(2);
+                                    //var solved = resoudre(grG);
+                                    pathImg = dessinerSudokuResolu(grG, null);
+                                    bot.uploadFile({
+                                        to: channelID,
+                                        message: "Voilà votre grille à résoudre :\n"+stringFromSudoku(grG),
                                         file: pathImg,
                                         filename: "grille.png"
                                     });
@@ -393,7 +487,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     }
                 }
                 break;
-            
+
             // Si on veut ajouter d'autres commandes
         }
     }

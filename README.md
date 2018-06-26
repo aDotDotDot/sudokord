@@ -14,6 +14,10 @@ Le bot peut ensuite être lancé, il répond aux commandes :
 
 > $sudoku solve <lignes sans espaces séparées par |> : résout la grille demandée
 
+> $sudoku check <lignes sans espaces séparées par |> : vérifie si la grille est valide
+
+> $sudoku generate <difficulté de 1 à 5> : génère une grille à résoudre
+
 ## Exemples
 > $sudoku draw 530070000|600195000|098000060|800060003|400803001|700020006|060000280|000419000|000080079
 ![alt text](https://image.ibb.co/fHsF0T/grille_vierge_test.png)
