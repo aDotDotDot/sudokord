@@ -68,10 +68,15 @@ var genererGrille = function(difficulte){
         }
     }
     var copy = defineFromString(stringFromSudoku(grilleG));
-    if(resoudre(copy)[1]){//on veut une grille qui peut être résolue
-        return grilleG;
-    }else
+    try{
+        if(resoudre(copy)[1]){//on veut une grille qui peut être résolue
+            return grilleG;
+        }else
+            return genererGrille(difficulte);
+    }catch(e){
         return genererGrille(difficulte);
+    }
+
 }
 
 /*
