@@ -69,7 +69,7 @@ var genererGrille = function(difficulte){
     }
     var copy = defineFromString(stringFromSudoku(grilleG));
     try{
-        if(resoudre(copy)[1]){//on veut une grille qui peut être résolue
+        if(resoudreIntelligent(copy)[1]){//on veut une grille qui peut être résolue
             return grilleG;
         }else
             return genererGrille(difficulte);
@@ -77,8 +77,29 @@ var genererGrille = function(difficulte){
         return genererGrille(difficulte);
     }
 
-}
+};
 
+/*ajoute N chiffres à la grille */
+/*var indiceGrille = function(grille, hints){
+    var cv = casesVides();
+    if(hints > cv.length)
+        return resolve(grille)[1];
+    else{
+        caseR = Math.floor(Math.random()*cv.length);
+        var possible = valeursPossibles(grilleG, i, j);
+        var leRandom = Math.floor(Math.random()*possible.length);
+        grille[caseR[0]][caseR[1]] = possible[leRandom];
+        var canSolve = resoudre(defineFromString(stringFromSudoku(grille)))[1];
+        while(!canSolve && possible.length > 1){
+            array.splice(leRandom, 1);
+            leRandom = Math.floor(Math.random()*possible.length)
+            grille[caseR[0]][caseR[1]] = possible[leRandom];
+            canSolve = resoudre(defineFromString(stringFromSudoku(grille)))[1];
+        }
+    }
+    return grille;
+};
+*/
 /*
 Vérifie qu'une ligne est correcte : 
   - aucune chiffre n'est répété
@@ -178,6 +199,157 @@ var casesVides = function(gr){
     return cp;
 }
 
+var casesVidesIntelligent = function(gr){
+    var cp=[];
+    for(var i=0; i<9; i++){
+        for(var j=0; j<9; j++){
+            if(gr[i][j] == 0){
+                var v = valeursPossibles(gr, i, j);
+                cp.push([i, j, v]);
+            }
+        }
+    }
+    return cp.sort(function(x, y) {
+        return x[2].length - y[2].length;
+    });
+}
+
+var updateCasesVidesIntelligent = function(gr,cv){
+    for(var c in cv){
+        var ligne = cv[c][0];
+        var colonne = cv[c][1];
+        cv[2] = valeursPossibles(gr, ligne, colonne);
+    }
+    return cv.sort(function(x, y) {
+        return x[2].length - y[2].length;
+    });
+};
+
+var solveForOne = function(grToWork, cv){
+    var i = 0;
+    var exit = false;
+    while(i < cv.length && !exit){
+        if(cv[i][2] && cv[i][2].length == 1){
+            grToWork[cv[i][0]][cv[i][1]] = cv[i][2][0];
+            cv = casesVidesIntelligent(grToWork);
+        }
+        i++;
+        if(cv[i][2] && cv[i][2].length > 1)
+            exit = true;
+    }
+    return grToWork;
+}
+
+var hiddenSingles = function(grToWork){
+    /*On cherche les hidden singles, les nombres qui ne peuvent aller qu'à un seul endroit mais qui n'apparaissent pas comme uniques dans les valeurs possibles
+    Le cas le plus courant : un chiffre est déjà dans les lignes et les colonnes autour de la positions
+     0 7 0 | 0 0 0 | 0 0 0
+     0 0 0 | 0 0 0 | 0 0 0
+     0 0 0 | 0 0 0 | 0 0 0
+     ---------------------
+     7 0 0 | 0 0 0 | 0 0 0
+     0 0 0 | 0 0 0 | 0 0 0
+     0 0 0 | 0 0 0 | 0 0 0
+     ---------------------
+     0 0 X | 0 0 0 | 0 0 0
+     0 0 0 | 7 0 0 | 0 0 0
+     0 0 0 | 0 0 0 | 7 0 0
+     ---------------------
+    Le X ici est forcément un 7
+    */
+    var hiddenS = [];
+    var rev = reverseGrille(grToWork);
+    for(var ligne = 0; ligne <9; ligne ++){
+        for(var colonne = 0; colonne < 9; colonne++){
+            previousMultiple = Math.floor(ligne/3);
+            lignesComplementaires = [previousMultiple*3 + ((ligne + 1)%3), previousMultiple*3 + ((ligne + 2)%3)];
+            previousMultiple = Math.floor(colonne/3);
+            colonnesComplementaires = [previousMultiple*3 + ((colonne + 1)%3), previousMultiple*3 + ((colonne + 2)%3)];
+            for(var c = 1; c <= 9; c++){
+                if(grToWork[lignesComplementaires[0]].indexOf(c) != -1
+                   && grToWork[lignesComplementaires[1]].indexOf(c) != -1
+                   && rev[colonnesComplementaires[0]].indexOf(c) != -1
+                   && rev[colonnesComplementaires[1]].indexOf(c) != -1
+                   && grToWork[ligne].indexOf(c) == -1
+                   && rev[colonne].indexOf(c) == -1){
+                       hiddenS.push([ligne, colonne, c]);
+                   }
+            }
+        }
+    }
+    return hiddenS;
+};
+
+var solveForHidden = function(grToWork){
+    var hid = hiddenSingles(grToWork);
+    for(var i in hid){
+        grToWork[hid[i][0]][hid[i][1]] = hid[i][2];
+    }
+    return grToWork;
+};
+
+var resoudreIntelligent = function(grToWork){
+    var start = Date.now();
+    //grToWork = solveForHidden(grToWork);
+    var cv = casesVidesIntelligent(grToWork);//les cases à remplir
+    grToWork = solveForOne(grToWork, cv);
+    cv = casesVides(grToWork);
+    var iter = 0;//pour garder une trace des itérations
+    try{
+        for(var i=0; i < cv.length;){//on va gérer nous mêmes nos itérations, donc pas de i++ dans la définition
+        var limit = 9;//le max des nombres
+        var ligne, colonne, valeur, good;
+        good = false;
+        ligne = cv[i][0];
+        colonne = cv[i][1];
+        var valeurs = cv[i][2];
+        var cptValeurs = 0;
+        /*valeur = valeurs[cptValeurs];//on teste la valeur suivante
+        while(!good && cptValeurs <= valeurs.length){
+            //tant qu'on n'a pas trouvé de valeur viable ici, et qu'on n'a pas atteint la limite, on continue
+            if(testNouvelleValeur(grToWork, ligne, colonne, valeur)){//notre valeur serait possible ?
+                good = true;//on peut finir notre while, on a une valeur possible
+                grToWork[ligne][colonne] = valeur;//on l'ajoute à la grille
+                i++;//on avance à la valeur suivante
+            }else{//on teste une autre valeur
+                cptValeurs++;
+                valeur = valeurs[cptValeurs];
+                iter++;
+            }
+        }
+        if(!good){//on n'a aucune valeur possible, on a fait une erreur avant :/
+            grToWork[ligne][colonne] = 0;//on annule cette valeur, en remttant la case comme vide
+            i--;//du coup on repart en arrière dans le for
+            if(i<0)
+                throw "Bactkracking issue";
+            iter++;
+        }*/
+        valeur = grToWork[ligne][colonne] + 1;//on teste la valeur suivante
+        while(!good && valeur <=limit){
+            //tant qu'on n'a pas trouvé de valeur viable ici, et qu'on n'a pas atteint la limite, on continue
+            if(testNouvelleValeur(grToWork, ligne, colonne, valeur)){//notre valeur serait possible ?
+                good = true;//on peut finir notre while, on a une valeur possible
+                grToWork[ligne][colonne] = valeur;//on l'ajoute à la grille
+                i++;//on avance à la valeur suivante
+            }else{//on teste une autre valeur
+                valeur++;
+                iter++;
+            }
+        }
+        if(!good){//on n'a aucune valeur possible, on a fait une erreur avant :/
+            grToWork[ligne][colonne] = 0;//on annule cette valeur, en remettant la case comme vide
+            i--;//du coup on repart en arrière dans le for
+            iter++;
+        }
+        if(((Date.now() - start) / 1000) > 180)//more than 3 minutes
+            throw "Too many iterations"; //console.log(valeur, valeurs, cv[i]);
+        }
+    }catch(e){
+        logger.warn(e);
+        return [iter,false, (Date.now() - start) / 1000];
+    }
+    return [iter,grToWork, (Date.now() - start) / 1000];
+};
 /* Tests d'ajout de valeur dans une case vide 
 On vérifie avant d'ajouter une valeur qu'elle respecte les règles du sudoku : 
   - elle n'est pas en double sur la ligne
@@ -397,18 +569,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         }else{//la commande et la grile passées sont valides, on peut bosser 
                             switch(cmd2){
                                 case 'solve':
-                                    solved = resoudre(grilleUser);
+                                    solved = resoudreIntelligent(grilleUser);
                                     iter = solved[0]
+                                    time = solved[2]
                                     if(!solved[1]){
                                         bot.sendMessage({
                                             to: channelID,
-                                            message: "Une erreur s'est produite, cette grille est invalide, ou le bot n'a pas trouvé de solution dans un temps raisonnable"
+                                            message: "Une erreur s'est produite, cette grille est invalide, ou le bot n'a pas trouvé de solution dans un temps raisonnable ("+time+"s)"
                                         });
                                     }else{
                                         pathImg = dessinerSudokuResolu(solved[1], defineFromString(stUser));
                                         bot.uploadFile({
                                             to: channelID,
-                                            message: "Voilà votre grille résolue en "+iter+" itérations !",
+                                            message: "Voilà votre grille résolue en "+time+"s et "+iter+" itérations !",
                                             file: pathImg,
                                             filename: "grille.png"
                                         });
@@ -430,7 +603,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     });
                                     break;
                                 case 'check':
-                                    var canSolve = resoudre(defineFromString(stUser))[1];
+                                    var canSolve = resoudreIntelligent(defineFromString(stUser))[1];
                                     if(isGoodSudoku(grilleUser)){
                                         pathImg = dessinerSudokuResolu(grilleUser, null);
                                         bot.uploadFile({
@@ -498,7 +671,47 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     }
                 }
                 break;
-
+            case 'embed':
+                /*
+                embed=discord.Embed(title="test embed", url="http://ribt.fr", description="hey !", color=0xee28cb)
+                embed.set_author(name="DotDotDot", url="https://github.com/aDotDotDot")
+                embed.add_field(name=coucou, value=ça va ?, inline=True)
+                embed.add_field(name=c'est cool un embed, value=42, inline=True)
+                embed.add_field(name=, value=\o/, inline=False)
+                embed.set_footer(text="oh ! un footer")
+                await self.bot.say(embed=embed)
+                */
+                /*var embed = {   color: 0xee28cb,
+                                footer: {
+                                    text: "oh ! un footer"
+                                },
+                                fields: [{
+                                    name: "coucou",
+                                    value: "ça va ?",
+                                    inline : true
+                                }, {
+                                    name: "c'est cool un embed",
+                                    value: "**Oo**",
+                                    inline : true
+                                }, {
+                                    name: "on peut aller à la ligne aussi ???",
+                                    value: "\o/",
+                                    inline : false
+                                }
+                                ],
+                                title: 'test embed',
+                                description: 'hey ! ',
+                                url: 'http://ribt.fr',
+                                author: {name:"DotDotDot"},
+                                
+                                
+                            };
+                bot.sendMessage({
+                    to: channelID,
+                    message: "test",
+                    embed: embed
+                });
+                break;*/
             // Si on veut ajouter d'autres commandes
         }
     }
