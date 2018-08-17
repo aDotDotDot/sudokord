@@ -4,10 +4,22 @@
   "description": "Sudoku Solver Discord bot",
   "main": "sudoku.js",
   "author": "DotDotDot",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "cd tests && mocha test.js",
+    "start": "node sudoku.js"
+  },
   "dependencies": {
-    "discord.io": "github:woor/discord.io#gateway_v6",
-    "feedparser": "^2.2.9",
+    "chai": "^4.1.2",
+    "discord.js": "^11.3.2",
+    "mocha": "^5.2.0",
     "node-gd": "^1.5.4",
+    "node-opus": "^0.3.0",
     "winston": "^2.4.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.3"
   }
 }
