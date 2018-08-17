@@ -289,7 +289,6 @@ exports.solve = (grToWork) => {
 /*Permet de dessiner une grille, en mettant les valeurs initiales avec une couleur différente si besoin*/
 exports.drawSudoku = (gr, initGr) => {
     let name_now;
-    console.log(initGr);
     //on charge l'image vierge d'un sudoku
     gd.openFile(__dirname+'/sudoku_empty.png', (err, img) => {
         if (err)
