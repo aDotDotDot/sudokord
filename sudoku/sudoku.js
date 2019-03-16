@@ -1,6 +1,6 @@
 
 const fontPath = __dirname+'/BebasNeue-Regular.ttf';
-const gd = require('node-gd');
+const Jimp = require('jimp');
 
 exports.emptyGrid = () => {
     let g = new Array();
@@ -282,46 +282,43 @@ exports.solve = (grToWork) => {
 }
 
 
-
-
-
-
 /*Permet de dessiner une grille, en mettant les valeurs initiales avec une couleur différente si besoin*/
 exports.drawSudoku = (gr, initGr) => {
-    let name_now;
-    //on charge l'image vierge d'un sudoku
-    gd.openFile(__dirname+'/sudoku_empty.png', (err, img) => {
-        if (err)
-            throw err;
-        if(img === null)
-            throw 'no image';
-        let txtColor = img.colorAllocate(0, 0, 0);//du noir
-        let txtColorRed = img.colorAllocate(255, 0, 0);//du rouge
-        let txtColorBlue = img.colorAllocate(71, 93, 255);//du bleu pastel
+    return new Promise( (resolve, reject)=>{
+        let name_now;
+        let loadedImage;
         let onlyOne = (initGr == null); //si on n'a pas d'autre grille
-        for(let i = 0; i< 9; i++){
-            for(let j = 0; j < 9; j++){
-                if(gr[j][i] != 0){
-                    if(onlyOne || initGr[j][i] != 0){
-                        //on a une image de 9*60 x 9*60 pixels, chaque chiffre va dans un carré de 60x60
-                        //les coordonnées sont donc de j*60 i*60 pour le coin
-                        // mais on veut centrer le texte, on préfère donc le bas de la case (j+1) puis remonter de quelques pixels (11 semble être correct avec la taille et la police)
-                        //pour centrer verticalement même réflexion, avec i*60 et 21 pixels
-                        img.stringFT(txtColor, fontPath, 40, 0, 21+60*i, ((j+1)*60)-11, ""+gr[j][i]); 
-                    }else{
-                        img.stringFT(txtColorBlue, fontPath, 40, 0, 21+60*i, ((j+1)*60)-11, ""+gr[j][i]);  
+        //on charge l'image vierge d'un sudoku
+        Jimp.read(__dirname+'/sudoku_empty.png')
+        .then(function (image) {
+            loadedImage = image;
+            return Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+        })
+        .then(function (font) {
+            name_now = __dirname+'/tmpimgs/grille_sudoku_'+Date.now()+'.png';
+            for(let i = 0; i< 9; i++){
+                for(let j = 0; j < 9; j++){
+                    if(gr[j][i] != 0){
+                        if(onlyOne || initGr[j][i] != 0){
+                            //on a une image de 9*60 x 9*60 pixels, chaque chiffre va dans un carré de 60x60
+                            //les coordonnées sont donc de j*60 i*60 pour le coin
+                            // mais on veut centrer le texte, on préfère donc le bas de la case (j+1) puis remonter de quelques pixels (11 semble être correct avec la taille et la police)
+                            //pour centrer verticalement même réflexion, avec i*60 et 21 pixels
+                            loadedImage.print(font, 21+60*i, ((j+1)*60)-40, ""+gr[j][i]);
+                        }else{
+                            loadedImage.print(font, 21+60*i, ((j+1)*60)-40, ""+gr[j][i]);
+                        }
                     }
+                        
                 }
-                    
             }
-        }
-        name_now = __dirname+'/tmpimgs/grille_sudoku_'+Date.now()+'.png'
-        img.saveFile(name_now, (err) => {
-        img.destroy();
-        if (err)
-            throw err;
-        });
+            loadedImage.write(name_now);
+            resolve(name_now);
+        })
+        .catch(function (err) {
+            console.error(err);
+            reject(err);
+        });    
     });
-    return name_now;//on retourne le nom de l'image, pour l'upload et la supprimer ensuite
 }
 

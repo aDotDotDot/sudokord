@@ -14,8 +14,8 @@
   "dependencies": {
     "chai": "^4.1.2",
     "discord.js": "^11.3.2",
+    "jimp": "^0.6.0",
     "mocha": "^5.2.0",
-    "node-gd": "^1.5.4",
     "node-opus": "^0.3.0",
     "winston": "^2.4.2"
   },

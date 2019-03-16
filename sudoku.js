@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const logger = require('winston');
 const fs = require('fs');
 const auth = require('./auth.json');
-const gd = require('node-gd');
+//const gd = require('node-gd');
 const sudoku = require('./sudoku/sudoku.js');
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -59,7 +59,7 @@ bot.on('message', function (message) {
                     if(!solved[1]){
                         message.channel.send("Une erreur s'est produite, cette grille est invalide, ou le bot n'a pas trouvé de solution dans un temps raisonnable ("+time+"s)");
                     }else{
-                        pathImg = sudoku.drawSudoku(solved[1], sudoku.defineFromString(paramUser.stUser));
+                        sudoku.drawSudoku(solved[1], sudoku.defineFromString(paramUser.stUser)).then( pathImg => {
                         message.channel.send(`Voilà votre grille résolue en ${iter} itérations !`,
                         {files:[{
                             attachment: pathImg,
@@ -71,11 +71,12 @@ bot.on('message', function (message) {
                         }).catch((err)=>{
                             console.log(err);
                         })
+                        });
                     }
                 }
                 break;
             case 'draw':
-                pathImg = sudoku.drawSudoku(paramUser.gridUser, null);
+                sudoku.drawSudoku(paramUser.gridUser, null).then( pathImg => {
                 message.channel.send(`Voilà votre grille !`,
                         {files:[{
                             attachment: pathImg,
@@ -87,11 +88,12 @@ bot.on('message', function (message) {
                         }).catch((err)=>{
                             console.log(err);
                         });
+                });
                 break;
             case 'check':
                 var canSolve = sudoku.solve(sudoku.defineFromString(paramUser.stUser))[1];
                 if(sudoku.isGoodSudoku(paramUser.gridUser)){
-                    pathImg = sudoku.drawSudoku(paramUser.gridUser, null);
+                    sudoku.drawSudoku(paramUser.gridUser, null).then(pathImg=>{
                     message.channel.send(`Votre grille est complète, bravo !`,
                     {files:[{
                         attachment: pathImg,
@@ -103,8 +105,9 @@ bot.on('message', function (message) {
                     }).catch((err)=>{
                         console.log(err);
                     });
+                    });
                 }else if(sudoku.isGoodIncompleteSudoku(paramUser.gridUser) && canSolve){
-                    pathImg = sudoku.drawSudoku(paramUser.gridUser, null);
+                    sudoku.drawSudoku(paramUser.gridUser, null).then(pathImg => {
                     message.channel.send(`Votre grille est incomplète, mais vous êtes sur la bonne voie !`,
                     {files:[{
                         attachment: pathImg,
@@ -115,7 +118,8 @@ bot.on('message', function (message) {
                         });
                     }).catch((err)=>{
                         console.log(err);
-                    });
+                    })
+                });
                 }else if(sudoku.isGoodIncompleteSudoku(paramUser.gridUser) && !canSolve){
                     message.channel.send("Cette grille est valide, incomplète, mais ne peut pas peut-être résolue, vous avez probablement fait une petite erreur");
                 }else{
