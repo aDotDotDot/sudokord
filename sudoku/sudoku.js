@@ -20,7 +20,10 @@ exports.reverseGrid = gr => {
     let rev = exports.emptyGrid();
     for(let i=0; i<9; i++){
         for(let j=0; j<9; j++){
-            rev[j][i] = gr[i][j];
+            if(gr[i] && gr[i][j])
+                rev[j][i] = gr[i][j];
+            else
+                return false;
         }
     }
     return rev;
@@ -131,7 +134,7 @@ Vérifie qu'une grille est complétée <=> il n'y a aucune case vide
 exports.isComplete = (gr) => {
     for(let i=0; i<9; i++){
         for(let j=0; j<9; j++){
-            if(gr[i][j] == 0)
+            if(gr[i] && gr[i][j] && gr[i][j] == 0)
                 return false;
         }
     }
@@ -220,7 +223,7 @@ exports.emptySquares = (gr) => {
     let cp=[];
     for(let i=0; i<9; i++){
         for(let j=0; j<9; j++){
-            if(gr[i][j] == 0)
+            if(gr[i] && gr[i][j] && gr[i][j] == 0)
                 cp.push([i,j]);
         }
     }

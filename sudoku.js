@@ -91,6 +91,9 @@ bot.on('message', function (message) {
                 });
                 break;
             case 'check':
+                if(!sudoku.defineFromString(paramUser.stUser))
+                    message.channel.send("Cette grille est invalide");
+                else{
                 var canSolve = sudoku.solve(sudoku.defineFromString(paramUser.stUser))[1];
                 if(sudoku.isGoodSudoku(paramUser.gridUser)){
                     sudoku.drawSudoku(paramUser.gridUser, null).then(pathImg=>{
@@ -124,6 +127,7 @@ bot.on('message', function (message) {
                     message.channel.send("Cette grille est valide, incomplète, mais ne peut pas peut-être résolue, vous avez probablement fait une petite erreur");
                 }else{
                     message.channel.send("Cette grille est invalide");
+                }
                 }
                 break;
             case 'generate':
