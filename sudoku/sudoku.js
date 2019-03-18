@@ -278,7 +278,7 @@ exports.solve = (grToWork) => {
                 throw "Too many iterations";
         }
     }catch(e){
-        logger.warn(e);
+        console.log(e);
         return [iter,false];
     }
     return [iter,grToWork];
